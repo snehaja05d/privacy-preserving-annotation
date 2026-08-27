@@ -1,0 +1,43 @@
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated files
+structure.txt
+*.log
+*.tmp
+*.temp
+
+# Generated outputs
+evaluation/**/outputs/
+evaluation/**/results/
+privacy_module/output/
+output/
+outputs/
+approved/
+review_again/
+
+# Dataset archives
+*.zip
+data/text_pii/icdar2015/
+
+# Accidental installer
+privacy_module/input/Git-*.exe
+
+# Jupyter
+.ipynb_checkpoints/

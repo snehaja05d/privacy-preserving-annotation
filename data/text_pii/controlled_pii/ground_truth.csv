@@ -1,0 +1,11 @@
+image,pii_type,expected_action
+case_001_name.jpg,NAME,MASK
+case_002_phone.jpg,PHONE,MASK
+case_003_email.jpg,EMAIL,MASK
+case_004_address.jpg,ADDRESS,MASK
+case_005_id.jpg,ID,MASK
+case_006_no_pii.jpg,NONE,KEEP
+case_007_mixed.jpg,NAME+PHONE+EMAIL,MASK
+case_008_business.jpg,NONE,KEEP
+case_009_date.jpg,DATE,REVIEW
+case_010_multiple.jpg,NAME+PHONE+EMAIL+ID,MASK
