@@ -1,535 +1,197 @@
 # Privacy-Preserving Annotation System
 
-A configurable privacy-preserving preprocessing and desensitisation layer designed to protect sensitive information in images before they are used for computer vision annotation.
+A privacy-preserving AI platform that detects and anonymizes sensitive information in images before they are used for annotation.
 
-The system detects sensitive visual and textual information, applies appropriate masking techniques, evaluates detection confidence, supports human verification, and transfers only approved privacy-safe images to the annotation environment.
+The system detects **faces, license plates, and text-based PII** such as names, phone numbers, email addresses, and IDs. Detected information is masked before the image is sent for annotation, helping reduce exposure of sensitive data.
+
+The platform also supports **human-in-the-loop review** for cases where automatic detection requires verification. Images marked as **Review Required** can be manually checked and approved before delivery.
 
 ---
 
-## Overview
-
-Modern computer vision datasets often contain sensitive information such as:
-
-- Human faces
-- Vehicle license plates
-- Names
-- Phone numbers
-- Email addresses
-- Addresses
-- Identification numbers
-- Other personally identifiable information (PII)
-
-This project provides a preprocessing layer between **raw image data** and the **annotation platform**.
-
-Instead of sending the original image directly for annotation, the image first passes through privacy detection and desensitisation.
+## How It Works
 
 ```text
-Raw Image
-    │
-    ▼
-Privacy Detection
-    │
-    ├── Face Detection
-    ├── License Plate Detection
-    └── Text / PII Detection
-    │
-    ▼
-Privacy Masking
-    │
-    ▼
-Confidence Evaluation
-    │
-    ├── High Confidence ─────► Approved
-    │
-    └── Low Confidence ──────► Human Verification
-                                      │
-                              ┌───────┴───────┐
-                              ▼               ▼
-                           Approve          Reject
-                              │
-                              ▼
-                    Privacy-Safe Image
-                              │
-                              ▼
-                         Xtreme1
+Image / External Application
+            ↓
+       PrivacyHub
+            ↓
+   Privacy Detection
+     ↙      ↓       ↘
+  Faces   Plates    Text PII
+     ↘      ↓       ↙
+       Privacy Masking
+            ↓
+    Confidence Check
+            ↓
+     ┌──────┴──────┐
+     ↓             ↓
+  Approved    Review Required
+     ↓             ↓
+     └──────┬──────┘
+            ↓
+     Delivery & Integration
+        ↙           ↘
+ Return Image      Xtreme1
 ```
 
----
+PrivacyHub provides a **web interface built with FastAPI** and a **REST API** for external applications.
 
-# Key Features
+External applications can send images to PrivacyHub using a **Bearer token**, receive a job ID, track processing status, and retrieve the processed image after completion.
 
-### 1. Face Privacy Protection
+The API also includes **token management, API usage tracking, rate limiting, and job tracking**.
 
-Detects human faces in images and applies masking to prevent direct identification.
-
-### 2. License Plate Protection
-
-Detects vehicle license plates and masks them before the image is made available for annotation.
-
-### 3. Text PII Detection
-
-Uses OCR-based processing to identify potentially sensitive information contained within image text.
-
-Supported examples include:
-
-- Names
-- Phone numbers
-- Email addresses
-- Addresses
-- Identification numbers
-- Other configurable PII patterns
-
-### 4. Privacy-Safe Image Generation
-
-The original image is processed to generate a desensitised version while preserving the useful visual information required for annotation.
-
-### 5. Confidence-Based Verification
-
-Detection results can be evaluated using confidence thresholds.
-
-Low-confidence cases can be routed to human verification instead of being automatically approved.
-
-### 6. Human Verification
-
-Provides a review stage where uncertain results can be manually checked before they are transferred to the annotation environment.
-
-### 7. Xtreme1 Integration
-
-Approved privacy-safe images can be transferred to an Xtreme1 annotation dataset.
-
-The system also includes verification of uploaded images.
-
-### 8. Evaluation and Testing
-
-The project includes evaluation scripts and test cases for the text PII pipeline, including controlled and real-world image scenarios.
+For annotation workflows, approved privacy-safe images can be delivered directly to **Xtreme1** using the Xtreme1 dataset ID and Bearer token.
 
 ---
 
-# System Architecture
+## Main Features
 
-The system is organized into separate components to keep detection, masking, privacy orchestration, and evaluation modular.
-
-```text
-                         ┌─────────────────────┐
-                         │     Input Image     │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                    ┌────────────────────────────┐
-                    │    Privacy Detection       │
-                    ├────────────────────────────┤
-                    │ • Face Detection            │
-                    │ • License Plate Detection   │
-                    │ • OCR / Text Detection      │
-                    │ • PII Detection             │
-                    └─────────────┬──────────────┘
-                                  │
-                                  ▼
-                    ┌────────────────────────────┐
-                    │     Privacy Masking         │
-                    └─────────────┬──────────────┘
-                                  │
-                                  ▼
-                    ┌────────────────────────────┐
-                    │   Confidence Evaluation     │
-                    └─────────────┬──────────────┘
-                                  │
-                     ┌────────────┴────────────┐
-                     │                         │
-                     ▼                         ▼
-              High Confidence            Low Confidence
-                     │                         │
-                     │                         ▼
-                     │                ┌─────────────────┐
-                     │                │ Human Review    │
-                     │                └────────┬────────┘
-                     │                         │
-                     └────────────┬────────────┘
-                                  ▼
-                       ┌─────────────────────┐
-                       │ Approved Image      │
-                       └──────────┬──────────┘
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │ Xtreme1 Annotation  │
-                       └─────────────────────┘
-```
+* Face detection and anonymization
+* License plate detection and anonymization
+* OCR-based text detection
+* PII detection for names, emails, phone numbers, IDs, etc.
+* Confidence-based processing
+* Human review for uncertain detections
+* FastAPI REST API
+* Bearer-token authentication
+* API token generation, expiry, and revocation
+* API usage tracking
+* Rate limiting
+* Asynchronous job tracking
+* Return Image delivery
+* Xtreme1 integration
+* Web-based PrivacyHub interface
 
 ---
 
-# Project Structure
+## Technologies
+
+* Python
+* FastAPI
+* OpenCV
+* YOLO
+* PaddleOCR
+* PyTorch
+* Hugging Face Transformers
+* ONNX Runtime
+* SQLite
+* Xtreme1
+* HTML / CSS / JavaScript
+
+---
+
+## Project Structure
 
 ```text
 privacy-preserving-annotation/
 │
-├── app.py
-├── run_privacy.py
+├── data/
+├── database/
+├── evaluation/
+├── modules/
+├── privacy_engine/
+├── privacy_module/
+├── privacyhub_web/
+├── scripts/
+│
 ├── requirements.txt
 ├── requirements-full.txt
-├── README.md
-│
-├── modules/
-│   │
-│   ├── text_pii/
-│   │   ├── ocr.py
-│   │   ├── pii_detector.py
-│   │   ├── pii_aligner.py
-│   │   ├── masker.py
-│   │   ├── pipeline.py
-│   │   └── tests/
-│   │
-│   └── visual_privacy/
-│       ├── detector.py
-│       ├── masker.py
-│       ├── pipeline.py
-│       └── __init__.py
-│
-├── privacy_engine/
-│   ├── pipeline.py
-│   ├── human_verification.py
-│   ├── paths.py
-│   └── send_to_xtreme1.py
-│
-├── privacy_module/
-│   ├── input/
-│   └── models/
-│
-├── evaluation/
-│   └── text_pii/
-│       ├── evaluate_controlled.py
-│       ├── evaluate_icdar2015.py
-│       ├── evaluate_sroie.py
-│       └── tests/
-│
-├── data/
-│   └── text_pii/
-│
-└── scripts/
-    └── text_pii-selection/
+├── run_privacy.py
+└── structure.txt
 ```
 
 ---
 
-# Processing Pipeline
+## Installation
 
-## Step 1 — Image Input
-
-An image is provided to the privacy-preserving preprocessing system.
-
-## Step 2 — Sensitive Information Detection
-
-The system analyzes the image for different categories of sensitive information.
-
-### Visual information
-
-- Faces
-- License plates
-
-### Textual information
-
-- Names
-- Phone numbers
-- Email addresses
-- Addresses
-- IDs and other PII
-
-## Step 3 — Masking
-
-Detected sensitive regions are masked using the appropriate privacy-preserving technique.
-
-The goal is to remove identifiable information while retaining the useful context of the image.
-
-## Step 4 — Confidence Evaluation
-
-Detection results are evaluated against configured confidence thresholds.
-
-Results that require additional verification can be routed to the human review stage.
-
-## Step 5 — Human Verification
-
-A reviewer can inspect uncertain results and decide whether the processed image should be approved or rejected.
-
-## Step 6 — Annotation Platform
-
-Approved privacy-safe images can be transferred to the Xtreme1 annotation environment.
-
----
-
-# Text PII Pipeline
-
-The text privacy component follows a dedicated OCR and PII processing pipeline:
-
-```text
-Image
-  │
-  ▼
-OCR
-  │
-  ▼
-Extracted Text + Word Locations
-  │
-  ▼
-PII Detection
-  │
-  ▼
-PII-to-Image Alignment
-  │
-  ▼
-PII Bounding Regions
-  │
-  ▼
-Mask Sensitive Text
-  │
-  ▼
-Privacy-Safe Image
-```
-
-This approach allows sensitive textual information to be detected and mapped back to its corresponding location within the original image.
-
----
-
-# Visual Privacy Pipeline
-
-Visual privacy processing handles image regions that can directly identify people or vehicles.
-
-```text
-Image
-  │
-  ├──────────────► Face Detection
-  │
-  └──────────────► License Plate Detection
-                         │
-                         ▼
-                    Region Masking
-                         │
-                         ▼
-                 Privacy-Safe Image
-```
-
----
-
-# Human Verification
-
-Automatic detection systems can produce uncertain results, particularly in difficult real-world images.
-
-To address this, the system supports a human verification stage.
-
-```text
-Detection
-    │
-    ▼
-Confidence Check
-    │
-    ├── High Confidence ──► Continue
-    │
-    └── Low Confidence ───► Human Review
-                                │
-                          ┌─────┴─────┐
-                          ▼           ▼
-                       Approve      Reject
-```
-
-This provides an additional validation layer before privacy-safe images are used for annotation.
-
----
-
-# Evaluation
-
-The repository contains evaluation and testing components for the text PII system.
-
-Evaluation scripts include:
-
-```text
-evaluation/text_pii/
-│
-├── evaluate_controlled.py
-├── evaluate_icdar2015.py
-├── evaluate_sroie.py
-└── tests/
-```
-
-The evaluation setup includes:
-
-- Controlled PII test images
-- Real-world document images
-- OCR evaluation
-- PII detection tests
-- Bounding-box alignment tests
-- Masking tests
-- End-to-end pipeline tests
-
----
-
-# Technologies
-
-| Technology | Purpose |
-|---|---|
-| Python | Core implementation |
-| Streamlit | Application interface |
-| OpenCV | Image processing |
-| YOLO | Visual object detection |
-| PaddleOCR | Optical character recognition |
-| ONNX Runtime | Model inference |
-| scikit-learn | Evaluation and supporting utilities |
-| Xtreme1 | Image annotation environment |
-
----
-
-# Installation
-
-## 1. Clone the Repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/snehaja05d/privacy-preserving-annotation.git
 cd privacy-preserving-annotation
 ```
 
-## 2. Create a Virtual Environment
+### 2. Create a Virtual Environment
 
-### Windows
-
-```powershell
+```bash
 python -m venv .venv
 ```
 
-Activate it:
+### 3. Activate the Environment
+
+**Windows PowerShell:**
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### Linux / macOS
+### 4. Install Dependencies
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-## 3. Install Dependencies
-
-```bash
+```powershell
 pip install -r requirements.txt
 ```
 
 For the complete dependency set:
 
-```bash
+```powershell
 pip install -r requirements-full.txt
 ```
 
 ---
 
-# Running the Application
+## Running PrivacyHub
 
-Start the Streamlit application:
+Start the web application with:
 
-```bash
-streamlit run app.py
+```powershell
+.\.venv\Scripts\python.exe .\privacyhub_web\run_web.py
 ```
 
-The terminal will provide the local URL for accessing the application.
+Once the server starts, open the local address shown in the terminal.
 
----
-
-# Privacy and Data Handling
-
-The system is designed around a privacy-first preprocessing workflow.
+FastAPI API documentation is available at:
 
 ```text
-Original Data
-     │
-     ▼
-Privacy Processing
-     │
-     ▼
-Sensitive Information Masked
-     │
-     ▼
-Human Verification
-     │
-     ▼
-Approved Privacy-Safe Data
-     │
-     ▼
-Annotation
+http://127.0.0.1:8501/docs
 ```
 
-The purpose of the preprocessing stage is to reduce the exposure of sensitive information during dataset annotation.
+---
+
+## API Workflow
+
+External applications can communicate with PrivacyHub through the REST API:
+
+```text
+External Application
+        ↓
+PrivacyHub API
+        ↓
+Privacy Processing
+        ↓
+Job ID
+        ↓
+Check Job Status
+        ↓
+Review if Required
+        ↓
+Retrieve / Deliver Approved Image
+```
+
+API requests require a valid **PrivacyHub Bearer token**.
 
 ---
 
-# Configuration
+## Xtreme1 Delivery
 
-Privacy processing behavior can be configured through the project's processing modules and confidence thresholds.
+Approved privacy-safe images can be delivered to an **Xtreme1 dataset** through the **Delivery & Integrations** section.
 
-Examples include:
+Required:
 
-- Detection confidence thresholds
-- Minimum detected region sizes
-- Input/output directories
-- Privacy processing stages
+* Xtreme1 Dataset ID
+* Xtreme1 Bearer Token
+* Approved privacy-safe image
 
-Configuration should be reviewed according to the requirements of the target dataset and annotation workflow.
-
----
-
-# Intended Use
-
-This system is intended for workflows where images need to be annotated while reducing exposure of personally identifiable or sensitive visual information.
-
-Potential applications include:
-
-- Automotive dataset annotation
-- Computer vision dataset preparation
-- Privacy-aware data preprocessing
-- Research datasets
-- Human-in-the-loop annotation workflows
-- Pre-annotation desensitisation
+The system sends only the protected image to the annotation environment.
 
 ---
 
-# Limitations
-
-Automatic privacy detection is not guaranteed to identify every sensitive region in every image.
-
-Performance may vary depending on:
-
-- Image resolution
-- Image quality
-- Lighting conditions
-- Occlusion
-- Text orientation
-- Detection confidence
-- OCR quality
-
-For this reason, the system includes human verification for cases requiring additional review.
-
----
-
-# Future Improvements
-
-Potential future improvements include:
-
-- Additional PII categories
-- Improved multilingual OCR support
-- Additional privacy detection models
-- More automated evaluation metrics
-- Improved human-review interfaces
-- Additional annotation platform integrations
-- Batch processing optimization
-- More extensive real-world benchmarking
-
----
-
-# License
-
-Add the appropriate project license here.
-
----
-
-# Project Status
-
-**Status:** Active Development
-
-The system currently includes privacy detection, masking, text PII processing, human verification, evaluation components, and Xtreme1 integration.
