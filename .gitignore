@@ -41,3 +41,8 @@ privacy_module/input/Git-*.exe
 
 # Jupyter
 .ipynb_checkpoints/
+# Local database
+database/
+
+# Local input/test images
+privacy_module/input/

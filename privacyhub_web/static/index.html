@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PrivacyHub</title>
+  <link rel="stylesheet" href="/static/styles.css?v=3">
+</head>
+<body>
+  <div id="authView" class="auth-view">
+    <div class="auth-card">
+      <div class="brand large"><span class="brand-mark">🔐</span><span>PrivacyHub</span></div>
+      <p class="brand-subtitle">Privacy-Preserving Annotation</p>
+      <div class="auth-switch">
+        <button id="signInTab" type="button" class="switch active">Sign in</button>
+        <button id="createTab" type="button" class="switch">Create account</button>
+      </div>
+      <form id="loginForm" class="auth-form">
+        <label>Email address</label>
+        <input name="email" type="email" placeholder="Enter your email address" required>
+        <label>Password</label>
+        <input name="password" type="password" placeholder="Enter your password" required>
+        <button class="primary wide" type="submit">Sign in</button>
+      </form>
+      <form id="signupForm" class="auth-form hidden">
+        <label>Full name</label>
+        <input name="username" type="text" placeholder="Enter your full name" required>
+        <label>Email address</label>
+        <input name="email" type="email" placeholder="Enter your email address" required>
+        <label>Password</label>
+        <input name="password" type="password" placeholder="Create a password" required>
+        <label>Confirm password</label>
+        <input name="confirm_password" type="password" placeholder="Re-enter your password" required>
+        <button class="primary wide" type="submit">Create account</button>
+      </form>
+      <div id="authMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="brand"><span class="brand-mark">🔐</span><strong>PrivacyHub</strong></div>
+        <div class="brand-subtitle">Privacy-Preserving Annotation</div>
+      </div>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav">
+        <button data-page="dashboard" class="nav-item active"><span>⌂</span> Dashboard</button>
+        <button data-page="protect" class="nav-item"><span>↑</span> Upload &amp; Protect</button>
+        <button data-page="review" class="nav-item"><span>◉</span> Review Queue</button>
+        <button data-page="approved" class="nav-item"><span>✓</span> Approved Dataset</button>
+        <button data-page="xtreme1" class="nav-item"><span>↗</span> Delivery &amp; Integrations</button>
+      <div class="sidebar-section api-access-section">
+          <div class="sidebar-section-title">API ACCESS</div>
+
+          <button class="nav-item" data-page="api-access">
+            <span class="nav-icon">🔑</span>
+            <span>API Access</span>
+          </button>
+      </div>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="signed-label">Signed in as</div>
+        <div id="sidebarUser" class="signed-user">User</div>
+        <button id="logoutBtn" type="button" class="logout">↪ &nbsp;Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="page active-page">
+        <div class="page-head dashboard-head">
+          <div>
+            <div class="eyebrow">PRIVACY WORKSPACE</div>
+            <h1>Privacy-Preserving Annotation</h1>
+            <p>Welcome back, <span class="username"></span>.</p>
+          </div>
+          <div class="protection-banner">
+            <div class="protection-icon">✓</div>
+            <div>
+              <strong>Privacy protection active</strong>
+              <span>Face · License Plate · Text PII</span>
+              <small>Human verification enabled</small>
+            </div>
+          </div>
+        </div>
+
+        <h2>Overview</h2>
+        <div id="stats" class="stats"></div>
+
+        <h2>How it works</h2>
+        <div class="pipeline-wrap">
+          <div class="pipeline">
+            <div id="pipeStep1" class="step"><b>1</b><span class="step-icon">↑</span><strong>Upload</strong><small>Add your images</small></div>
+            <div class="connector">→</div>
+            <div id="pipeStep2" class="step"><b>2</b><span class="step-icon">⌕</span><strong>Detect Sensitive Data</strong><small>Find faces, plates &amp; text PII</small></div>
+            <div class="connector">→</div>
+            <div id="pipeStep3" class="step"><b>3</b><span class="step-icon">◇</span><strong>Mask / Blur</strong><small>Protect sensitive information</small></div>
+            <div class="connector">→</div>
+            <div id="pipeStep4" class="step"><b>4</b><span class="step-icon">♙</span><strong>Human Review</strong><small>Verify low-confidence results</small></div>
+            <div class="connector">→</div>
+            <div id="pipeStep5" class="step"><b>5</b><span class="step-icon">↗</span><strong>Delivery</strong><small>Send approved privacy-safe images</small></div>
+          </div>
+          <div class="pipeline-legend">
+            <span><b>◉ Visual:</b> Faces &amp; License Plates</span>
+            <i></i>
+            <span><b>Text:</b> Names, Emails, Phone Numbers &amp; IDs</span>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card feature-card">
+            <div class="card-title-row"><div class="mini-icon">◇</div><h2>Protection coverage</h2></div>
+            <div class="feature-columns">
+              <div><strong>Visual Privacy</strong><p class="muted">Face and license-plate detection and masking.</p></div>
+              <div><strong>Text PII</strong><p class="muted">Sensitive text detection and protection.</p></div>
+            </div>
+          </div>
+          <div class="card feature-card">
+            <div class="card-title-row"><div class="mini-icon blue">✓</div><h2>Annotation readiness</h2></div>
+            <div class="feature-columns single">
+              <div><strong>Human-in-the-loop</strong><p class="muted">Low-confidence results are routed for manual verification.</p></div>
+              <div><strong>Delivery-ready export</strong><p class="muted">Only approved privacy-safe images are exported — to Xtreme1, the API, or your own workflow.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- UPLOAD & PROTECT -->
+      <section id="protect" class="page">
+        <div class="section-heading">
+          <div><div class="eyebrow">PROTECTION WORKSPACE</div><h1>Upload &amp; Protect</h1><p>Prepare images for annotation by automatically detecting and protecting sensitive information.</p></div>
+          <div class="page-status"><span class="status-dot"></span> Protection ready</div>
+        </div>
+
+        <div class="card upload-card">
+          <div class="card-heading">
+            <div><span class="section-number">01</span><div><h2>Upload images</h2><p class="muted">Add one or more images. You can keep adding images before starting protection.</p></div></div>
+            <span id="fileCount" class="count-pill">0 images</span>
+          </div>
+          <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          <div class="dropzone" id="dropzone">
+            <div class="upload-icon">↑</div>
+            <strong>Drop images here</strong>
+            <span class="muted">or use the button below · JPG, PNG, WEBP</span>
+            <button id="browseFiles" type="button" class="secondary browse-btn">Add images</button>
+          </div>
+          <div id="preview" class="preview-grid"></div>
+        </div>
+
+        <div class="card upload-card" id="apiIncomingCard">
+          <div class="card-heading">
+            <div><span class="section-number">API</span><div><h2>Incoming API images</h2><p class="muted">Images received from an external application are held here until you add them to the protection run.</p></div></div>
+            <span id="apiIncomingCount" class="count-pill">0 waiting</span>
+          </div>
+          <div id="apiIncomingList" class="preview-grid"><div class="muted">Checking for incoming API images...</div></div>
+        </div>
+
+        <div class="card protection-card">
+          <div class="card-heading">
+            <div><span class="section-number">02</span><div><h2>Privacy protection</h2><p class="muted">All protection categories are enabled by default so every uploaded image is checked.</p></div></div>
+            <span class="coverage-pill">All coverage enabled</span>
+          </div>
+          <div id="privacyTypes" class="checks"></div>
+          <div class="info-strip"><span>✓</span><span>Faces and license plates are handled as visual privacy. Names, emails, phone numbers and IDs are handled by the text PII pipeline.</span></div>
+        </div>
+
+        <div class="card run-card">
+          <div class="run-copy"><span class="section-number">03</span><div><h2>Run protection</h2><p class="muted">Process the selected images and route low-confidence results for human verification.</p></div></div>
+          <button id="protectBtn" type="button" class="primary protect-action">Protect Images <span>→</span></button>
+          <div id="jobBox" class="job hidden"></div>
+        </div>
+        <div id="outcome" class="card hidden"></div>
+      </section>
+
+      <!-- REVIEW -->
+      <section id="review" class="page">
+        <div class="section-heading">
+          <div><div class="eyebrow">HUMAN-IN-THE-LOOP</div><h1>Review Queue</h1><p>Manually verify images that the privacy engine could not confidently approve.</p></div>
+          <div class="page-status amber"><span class="status-dot"></span> Manual verification</div>
+        </div>
+        <div class="card review-intro"><div class="mini-icon amber-icon">!</div><div><strong>Why review?</strong><p class="muted">Low-confidence detections are held back from the approved dataset until a human confirms the protected result.</p></div></div>
+        <div id="reviewList"></div>
+      </section>
+
+      <!-- APPROVED DATASET -->
+      <section id="approved" class="page">
+        <div class="section-heading">
+          <div><div class="eyebrow">ANNOTATION READY</div><h1>Approved Dataset</h1><p>Privacy-safe images cleared for annotation and delivery.</p></div>
+          <div class="page-status green"><span class="status-dot"></span> Ready for annotation</div>
+        </div>
+        <div class="approved-summary card"><div><span class="summary-icon">✓</span><div><strong id="approvedCount">0 images ready for delivery</strong><p class="muted">Only approved privacy-safe images appear here.</p></div></div><button type="button" class="secondary" data-page-jump="xtreme1">Go to Delivery &amp; Integrations →</button></div>
+        <div id="approvedGrid" class="image-grid"></div>
+      </section>
+
+      <!-- DELIVERY & INTEGRATIONS -->
+      <section id="xtreme1" class="page">
+        <div class="section-heading">
+          <div><div class="eyebrow">DELIVERY &amp; INTEGRATIONS</div><h1>Delivery &amp; Integrations</h1><p>Choose where approved privacy-safe images should be delivered.</p></div>
+          <div class="page-status"><span class="status-dot"></span> Secure delivery</div>
+        </div>
+
+        <div class="card api-delivery-card">
+          <div class="card-heading">
+            <div>
+              <div class="section-number">01</div>
+              <div class="run-copy">
+                <div>
+                  <h2>Delivery options</h2>
+                  <p class="muted">Choose where an approved privacy-safe image should be delivered.</p>
+                </div>
+              </div>
+            </div>
+            <span class="count-pill">Approval required</span>
+          </div>
+
+          <div class="destination-grid">
+            <label class="destination-option active">
+              <input type="radio" name="apiDestination" value="RETURN" checked>
+              <div>
+                <strong>Return Image</strong>
+                <span>Return the protected image to the calling application.</span>
+              </div>
+            </label>
+
+            <label class="destination-option">
+              <input type="radio" name="apiDestination" value="XTREME1">
+              <div>
+                <strong>Xtreme1</strong>
+                <span>Send approved protected images to an Xtreme1 dataset.</span>
+              </div>
+            </label>
+
+            <label class="destination-option">
+              <input type="radio" name="apiDestination" value="WEBHOOK">
+              <div>
+                <strong>Other Application <span class="soon-tag">Coming soon</span></strong>
+                <span>Deliver the protected image through a webhook.</span>
+              </div>
+            </label>
+          </div>
+
+          <div id="xtremeApiFields" class="destination-fields hidden">
+            <div class="form-row">
+              <div>
+                <label for="apiDatasetId">Dataset ID</label>
+                <input id="apiDatasetId" type="number" min="1" placeholder="e.g. 3" value="4">
+              </div>
+              <div class="grow">
+                <label for="apiXtremeToken">Xtreme1 Bearer Token</label>
+                <input id="apiXtremeToken" type="password" placeholder="Paste Xtreme1 Bearer token">
+              </div>
+            </div>
+          </div>
+
+          <div id="webhookApiFields" class="destination-fields hidden">
+            <label for="apiWebhookUrl">Webhook URL</label>
+            <input id="apiWebhookUrl" type="url" placeholder="https://your-application.com/webhook">
+          </div>
+
+          <div class="info-strip">
+            <span>✓</span>
+            <div>Only the <strong>protected image</strong> can be delivered. Images requiring human review remain in the Review Queue until approved. The same Xtreme1 delivery action works for images uploaded directly to PrivacyHub and images received through the PrivacyHub API.</div>
+          </div>
+
+          <div id="deliveryReadyMessage" class="ready-count muted">Checking approved images ready for delivery...</div>
+          <button id="apiDeliveryBtn" type="button" class="primary wide-action">Run Delivery <span>→</span></button>
+          <div id="apiDeliveryMessage" class="message"></div>
+        </div>
+      </section>
+
+      <!-- API ACCESS -->
+      <section id="api-access" class="page">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">API ACCESS</div>
+            <h1>API Access</h1>
+            <p>Manage your PrivacyHub API token and monitor API usage.</p>
+          </div>
+          <div class="page-status">
+            <span class="status-dot"></span> Secure API access
+          </div>
+        </div>
+
+        <div class="api-access-grid">
+          <div class="card">
+            <div class="card-title-row">
+              <div class="mini-icon blue">🔑</div>
+              <h2>PrivacyHub API Token</h2>
+            </div>
+
+            <p class="muted">
+              Use your PrivacyHub API token to authenticate external applications
+              when calling the PrivacyHub API.
+            </p>
+
+            <div id="apiTokenStatus" class="token-status hidden">
+              <div class="token-status-head">
+                <span class="status-dot"></span>
+                <strong>Token Active</strong>
+              </div>
+              <div class="token-meta-grid">
+                <div>
+                  <span class="meta-label">Token Prefix</span>
+                  <code id="apiTokenPrefix">—</code>
+                </div>
+                <div>
+                  <span class="meta-label">Ends With</span>
+                  <code id="apiTokenLast4">—</code>
+                </div>
+                <div>
+                  <span class="meta-label">Created</span>
+                  <span id="apiTokenCreated">—</span>
+                </div>
+                <div>
+                  <span class="meta-label">Last Used</span>
+                  <span id="apiTokenLastUsed">Never</span>
+                </div>
+                <div>
+                  <span class="meta-label">Expires</span>
+                  <span id="apiTokenExpires">—</span>
+                </div>
+              </div>
+              <button id="revokeApiTokenBtn" type="button" class="secondary revoke-btn">
+                Revoke Token
+              </button>
+            </div>
+
+            <div id="apiTokenNoToken" class="info-strip">
+              <span>✓</span>
+              <div>No active PrivacyHub API token has been generated yet.</div>
+            </div>
+
+            <button id="generateApiTokenBtn" type="button" class="primary wide-action">
+              Generate API Token <span>→</span>
+            </button>
+
+            <div id="apiTokenMessage" class="message"></div>
+
+            <div id="apiTokenResult" class="hidden">
+              <label>New PrivacyHub API Token</label>
+              <div class="token-box">
+                <code id="apiTokenValue"></code>
+                <button type="button" id="copyApiTokenBtn" class="copy-btn" title="Copy token">Copy</button>
+              </div>
+              <p class="muted">
+                Save this token securely. The full token is shown only when it is generated.
+                It stays valid for 30 days, or until you revoke it.
+              </p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title-row">
+              <div class="mini-icon blue">↗</div>
+              <h2>Usage Tracking</h2>
+            </div>
+            <p class="muted">
+              Track API requests made with your PrivacyHub token.
+            </p>
+
+            <div class="usage-stats-grid">
+              <div class="usage-stat">
+                <span class="meta-label">Total Requests</span>
+                <strong id="usageTotal">0</strong>
+              </div>
+              <div class="usage-stat">
+                <span class="meta-label">Successful</span>
+                <strong id="usageSuccess">0</strong>
+              </div>
+              <div class="usage-stat">
+                <span class="meta-label">Review Required</span>
+                <strong id="usageReview">0</strong>
+              </div>
+              <div class="usage-stat">
+                <span class="meta-label">Rate Limited</span>
+                <strong id="usageRateLimited">0</strong>
+              </div>
+              <div class="usage-stat">
+                <span class="meta-label">Failed</span>
+                <strong id="usageFailed">0</strong>
+              </div>
+              <div class="usage-stat">
+                <span class="meta-label">Last Request</span>
+                <strong id="usageLast">—</strong>
+              </div>
+            </div>
+
+            <div class="usage-history-head">Recent Requests</div>
+            <div id="usageRecent" class="usage-recent">
+              <div class="muted">No API requests recorded yet.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="lightbox" class="lightbox hidden">
+    <button type="button" id="lightboxClose" class="lightbox-close">&times;</button>
+    <img id="lightboxImg" src="" alt="">
+    <div id="lightboxCaption" class="lightbox-caption"></div>
+  </div>
+  <script src="/static/app.js?v=3"></script>
+</body>
+</html>
