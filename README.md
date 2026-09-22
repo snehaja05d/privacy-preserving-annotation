@@ -14,7 +14,8 @@ For cases where automatic detection needs verification, the platform supports **
 - [Main Features](#main-features)
 - [Technologies](#technologies)
 - [Project Structure](#project-structure)
-- [Installation](#installation)
+- [Run with Docker](#run-with-docker)
+- [Local Development](#local-development)
 - [Running PrivacyHub](#running-privacyhub)
 - [API Workflow](#api-workflow)
 - [Xtreme1 Delivery](#xtreme1-delivery)
@@ -82,6 +83,7 @@ Once an image is approved as privacy-safe, it can be delivered directly to **Xtr
 - **Database:** SQLite
 - **Frontend:** HTML, CSS, JavaScript
 - **Integration:** Xtreme1
+- **Deployment:** Docker
 
 ---
 
@@ -90,8 +92,7 @@ Once an image is approved as privacy-safe, it can be delivered directly to **Xtr
 ```text
 privacy-preserving-annotation/
 │
-├── data/                  # Sample or working data
-├── database/              # SQLite database and schema
+├── data/                  # Data and project resources
 ├── evaluation/            # Evaluation scripts and metrics
 ├── modules/               # Core processing modules
 ├── privacy_engine/        # Detection and masking logic
@@ -99,15 +100,101 @@ privacy-preserving-annotation/
 ├── privacyhub_web/        # FastAPI web application
 ├── scripts/               # Helper / utility scripts
 │
+├── .dockerignore          # Docker build exclusions
+├── .gitignore             # Git exclusions
+├── Dockerfile             # Docker image configuration
+├── docker-compose.yml     # Docker Compose configuration
 ├── requirements.txt       # Core dependencies
-├── requirements-full.txt  # Full dependency set
-├── run_privacy.py         # Entry point for privacy pipeline
-└── structure.txt          # Project structure reference
+└── requirements-full.txt  # Full dependency set
 ```
 
 ---
 
-## Installation
+## Run with Docker
+
+The easiest way to run PrivacyHub is using the pre-built Docker image available on Docker Hub.
+
+### Requirements
+
+- Docker Desktop installed and running
+
+### 1. Pull the Docker Image
+
+```bash
+docker pull rachit1104/privacy-preserving-annotation:latest
+```
+
+### 2. Start PrivacyHub
+
+```bash
+docker run -d --name privacy-app -p 8501:8501 -e WEB_HOST=0.0.0.0 -e WEB_PORT=8501 -e OPEN_BROWSER=0 rachit1104/privacy-preserving-annotation:latest
+```
+
+### 3. Check if the Container is Running
+
+```bash
+docker ps
+```
+
+You should see `privacy-app` running with port `8501` mapped.
+
+### 4. Open PrivacyHub
+
+Open in your browser:
+
+```text
+http://localhost:8501
+```
+
+### Check All Containers
+
+To see both running and stopped containers:
+
+```bash
+docker ps -a
+```
+
+### View Application Logs
+
+To view the PrivacyHub logs:
+
+```bash
+docker logs privacy-app
+```
+
+To continuously watch the logs:
+
+```bash
+docker logs -f privacy-app
+```
+
+Press `Ctrl + C` to stop watching the logs.
+
+### Stop the Application
+
+```bash
+docker stop privacy-app
+```
+
+### Start it Again
+
+```bash
+docker start privacy-app
+```
+
+### Remove the Container
+
+```bash
+docker rm -f privacy-app
+```
+
+> If the container is removed, run the `docker run` command again to create a new one.
+
+---
+
+## Local Development
+
+For development without Docker, clone the repository and install the dependencies locally.
 
 ### 1. Clone the Repository
 
@@ -142,7 +229,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-For the complete dependency set (including optional/extended modules):
+For the complete dependency set:
 
 ```bash
 pip install -r requirements-full.txt
@@ -152,13 +239,17 @@ pip install -r requirements-full.txt
 
 ## Running PrivacyHub
 
-Start the web application:
+Start the web application locally:
 
 ```powershell
 .\.venv\Scripts\python.exe .\privacyhub_web\run_web.py
 ```
 
-Once the server starts, open the local address shown in the terminal.
+Once the server starts, open:
+
+```text
+http://127.0.0.1:8501
+```
 
 Interactive FastAPI documentation (Swagger UI) is available at:
 
