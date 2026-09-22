@@ -1,0 +1,21 @@
+services:
+  privacy-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: privacy-app
+
+    ports:
+      - "8501:8501"
+
+    environment:
+      WEB_HOST: "0.0.0.0"
+      WEB_PORT: "8501"
+      OPEN_BROWSER: "0"
+      XTREME1_URL: "http://host.docker.internal:8190"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    restart: unless-stopped
