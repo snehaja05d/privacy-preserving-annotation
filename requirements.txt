@@ -8,6 +8,7 @@ opencv-python-headless==5.0.0.93
 scikit-learn==1.9.0
 transformers==5.17.0
 ultralytics==8.4.118
+omegaconf==2.3.0
 open-image-models==0.6.0
 onnxruntime==1.29.0
 paddleocr==3.7.0
