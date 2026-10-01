@@ -1,276 +1,178 @@
 # Privacy-Preserving Annotation System
 
-A privacy-preserving AI platform that detects and anonymizes sensitive information in images before they are used for annotation.
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED)
+![Platform](https://img.shields.io/badge/platform-windows%20%7C%20linux%20%7C%20macos-lightgrey)
 
-The system automatically detects **faces, license plates, and text-based PII** — including names, phone numbers, email addresses, and ID numbers — and masks that information before an image is sent downstream for annotation. This reduces the exposure of sensitive data throughout the annotation pipeline.
-
-For cases where automatic detection needs verification, the platform supports **human-in-the-loop review**: images flagged as **Review Required** can be manually checked and approved before delivery.
-
-Approved images can be delivered in three ways: **returned directly**, sent to a built-in **annotation platform** (Xtreme1, CVAT, Label Studio), or pushed to **any annotator tool** through the **Custom Annotator API** — a universal integration that handles single-request uploads as well as multi-step, chained request flows.
+Detect and anonymize sensitive information in images **before** they reach human annotators. Faces, license plates, and text-based PII (names, phone numbers, emails, IDs) are found and masked automatically; uncertain cases go through human review; approved images are delivered straight into your annotation tool.
 
 ---
 
 ## Table of Contents
 
-- [How It Works](#how-it-works)
-- [Main Features](#main-features)
-- [Technologies](#technologies)
-- [Project Structure](#project-structure)
-- [Run with Docker](#run-with-docker)
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Delivery Options](#delivery-options)
+- [Quick Start (Docker)](#quick-start-docker)
 - [Local Development](#local-development)
-- [Running PrivacyHub](#running-privacyhub)
-- [API Workflow](#api-workflow)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
 - [Annotation Platform Delivery](#annotation-platform-delivery)
 - [Custom Annotator API](#custom-annotator-api)
+- [Evaluation](#evaluation)
 - [Performance Tips](#performance-tips)
+- [Project Structure](#project-structure)
+- [Screenshots](#screenshots)
+- [Contributing](#contributing)
 
 ---
 
-## How It Works
+## Overview
+
+Annotation pipelines routinely expose raw, sensitive imagery to labeling teams and third-party platforms. PrivacyHub sits in front of the annotation step: every image is scanned for privacy-sensitive content, masked, and only then released downstream. Nothing unmasked ever leaves the system.
+
+**What it detects**
+
+| Category | Method |
+|---|---|
+| Faces | YOLO-based detection |
+| License plates | YOLO-based detection |
+| Text PII (names, emails, phones, IDs) | PaddleOCR + BERT NER |
+
+**How it decides** — each detection carries a confidence score. High-confidence results are masked and approved automatically; low-confidence results are routed to **human-in-the-loop review**, where a reviewer approves or rejects before anything is delivered.
+
+---
+
+## Features
+
+- **Automatic PII detection & masking** — faces, plates, and text PII masked in one pass
+- **Confidence-based routing** — auto-approve when confident, human review when not
+- **Three delivery paths** — return the image, push to a built-in annotation platform, or integrate any tool via the Custom Annotator API
+- **Chained request flows** — multi-step upload workflows (presigned URLs, task creation) with response capture and variable substitution
+- **REST API for external apps** — Bearer-token auth, async jobs, usage tracking, rate limiting
+- **Web dashboard** — upload, monitor, review, and deliver from the browser
+
+---
+
+## Architecture
 
 ```mermaid
-flowchart TD
-    A["Image / External Application"] --> B["PrivacyHub"]
-    B --> C["Privacy Detection"]
-    C --> D["Face Detection"]
-    C --> E["License Plate Detection"]
-    C --> F["Text PII Detection"]
-    D --> G["Privacy Masking"]
-    E --> G
-    F --> G
-    G --> H{"Confidence Check"}
-    H -->|High confidence| I["Approved"]
-    H -->|Low confidence| J["Review Required"]
-    J -->|Manual review & approval| I
-    I --> K["Delivery & Integration"]
-    K --> L["Return Processed Image"]
-    K --> M["Annotation Platform<br/>(Xtreme1 / CVAT / Label Studio)"]
-    K --> N["Custom Annotator API<br/>(any tool, single or chained requests)"]
+flowchart TB
+    Client(["Client<br/>Dashboard / External App"]) --> API["PrivacyHub API<br/>FastAPI · Bearer auth · rate limiting"]
+    API --> Jobs["Async Job Engine<br/>queue · status tracking · usage metering"]
+    Jobs --> Engine
+    subgraph Engine["Detection Engine"]
+        direction LR
+        Face["Face detection<br/>YOLO"]
+        Plate["Plate detection<br/>YOLO"]
+        Text["Text PII detection<br/>PaddleOCR + BERT NER"]
+    end
+    Engine --> Mask["Privacy Masking"]
+    Mask --> Gate{"Confidence gate"}
+    Gate -->|"High"| Approved(["Approved"])
+    Gate -->|"Low"| Review["Human review"]
+    Review -->|"Approve"| Approved
+    Approved --> Delivery{{"Delivery"}}
+    Delivery --> D1["Return image"]
+    Delivery --> D2["Annotation platforms<br/>Xtreme1 · CVAT · Label Studio"]
+    Delivery --> D3["Custom Annotator API<br/>single or chained requests"]
 
-    style A fill:#1f2937,stroke:#4b5563,color:#fff
-    style B fill:#2563eb,stroke:#1d4ed8,color:#fff
-    style C fill:#374151,stroke:#4b5563,color:#fff
-    style G fill:#374151,stroke:#4b5563,color:#fff
-    style H fill:#b45309,stroke:#92400e,color:#fff
-    style I fill:#15803d,stroke:#166534,color:#fff
-    style J fill:#b91c1c,stroke:#991b1b,color:#fff
-    style K fill:#2563eb,stroke:#1d4ed8,color:#fff
-    style L fill:#374151,stroke:#4b5563,color:#fff
-    style M fill:#374151,stroke:#4b5563,color:#fff
-    style N fill:#374151,stroke:#4b5563,color:#fff
-```
-
-PrivacyHub provides a **web interface built with FastAPI** and a **REST API** for external applications.
-
-External applications authenticate with a **Bearer token**, submit images for processing, receive a job ID, poll job status, and retrieve the processed image once it's ready. The API also handles **token management, usage tracking, rate limiting, and job tracking**.
-
-Once an image is approved as privacy-safe, it can be **returned directly**, delivered to a built-in **annotation platform** (Xtreme1, CVAT, or Label Studio), or sent to **any annotator tool** through the **Custom Annotator API**.
-
----
-
-## Main Features
-
-| Category | Capabilities |
-|---|---|
-| **Detection** | Face detection, license plate detection, OCR-based text detection, PII detection (names, emails, phone numbers, IDs) |
-| **Processing** | Confidence-based routing, automatic masking, human review for uncertain detections, per-type pipeline skipping for speed |
-| **API** | FastAPI REST API, Bearer-token authentication, token generation/expiry/revocation, usage tracking, rate limiting, asynchronous job tracking |
-| **Delivery** | Return the processed image directly, deliver to Xtreme1, CVAT, or Label Studio, or send to any tool via the Custom Annotator API |
-| **Custom Annotator API** | Single-request uploads (any HTTP endpoint) and chained multi-step flows with response capture and variable substitution |
-| **Interface** | Web-based PrivacyHub dashboard |
-
----
-
-## Technologies
-
-- **Language:** Python
-- **Web Framework:** FastAPI
-- **Computer Vision:** OpenCV, YOLO, PaddleOCR
-- **ML/DL:** PyTorch, Hugging Face Transformers, ONNX Runtime
-- **Database:** SQLite
-- **Frontend:** HTML, CSS, JavaScript
-- **Integrations:** Xtreme1, CVAT (via `cvat-sdk`), Label Studio, Custom Annotator API (generic HTTP)
-- **Deployment:** Docker
-
----
-
-## Project Structure
-
-```text
-privacy-preserving-annotation/
-│
-├── data/                  # Data and project resources
-├── evaluation/            # Evaluation scripts and metrics (developer tooling, not user-facing)
-├── modules/               # Core processing modules
-├── privacy_engine/        # Detection and masking logic
-├── privacy_module/        # Privacy-related utilities
-├── privacyhub_web/        # FastAPI web application
-├── scripts/               # Helper / utility scripts
-│
-├── .dockerignore          # Docker build exclusions
-├── .gitignore             # Git exclusions
-├── Dockerfile             # Docker image configuration
-├── docker-compose.yml     # Docker Compose configuration
-├── requirements.txt       # Core dependencies
-└── requirements-full.txt  # Full dependency set
+    style Client fill:#1f2937,stroke:#4b5563,color:#fff
+    style API fill:#2563eb,stroke:#1d4ed8,color:#fff
+    style Jobs fill:#374151,stroke:#4b5563,color:#fff
+    style Engine fill:#111827,stroke:#4b5563,color:#fff
+    style Mask fill:#374151,stroke:#4b5563,color:#fff
+    style Gate fill:#b45309,stroke:#92400e,color:#fff
+    style Approved fill:#15803d,stroke:#166534,color:#fff
+    style Review fill:#b91c1c,stroke:#991b1b,color:#fff
+    style Delivery fill:#2563eb,stroke:#1d4ed8,color:#fff
 ```
 
 ---
 
-## Run with Docker
+## Delivery Options
 
-The easiest way to run PrivacyHub is using the pre-built Docker image available on Docker Hub.
+| # | Option | Use when |
+|---|---|---|
+| 1 | **Return Image** | You just want the masked image back (API or download) |
+| 2 | **Annotation Platform** | One-click delivery to **Xtreme1**, **CVAT**, or **Label Studio** via built-in integrations |
+| 3 | **Custom Annotator API** | Your tool isn't built in — configure any HTTP upload, from a single request to an 8-step chained flow |
 
-### Requirements
+---
 
-- Docker Desktop installed and running
+## Quick Start (Docker)
 
-### 1. Pull the Docker Image
+**Requirements:** Docker Desktop installed and running.
 
 ```bash
+# 1. Pull the image
 docker pull rachit1104/privacy-preserving-annotation:latest
+
+# 2. Run it
+docker run -d --name privacy-app -p 8501:8501 \
+  -e WEB_HOST=0.0.0.0 -e WEB_PORT=8501 -e OPEN_BROWSER=0 \
+  rachit1104/privacy-preserving-annotation:latest
+
+# 3. Open http://localhost:8501
 ```
 
-### 2. Start PrivacyHub
+Useful commands:
 
 ```bash
-docker run -d --name privacy-app -p 8501:8501 -e WEB_HOST=0.0.0.0 -e WEB_PORT=8501 -e OPEN_BROWSER=0 rachit1104/privacy-preserving-annotation:latest
+docker ps            # check it's running
+docker logs -f privacy-app   # watch logs (Ctrl+C to stop)
+docker stop privacy-app      # stop
+docker start privacy-app     # start again
+docker rm -f privacy-app     # remove
 ```
-
-### 3. Check if the Container is Running
-
-```bash
-docker ps
-```
-
-You should see `privacy-app` running with port `8501` mapped.
-
-### 4. Open PrivacyHub
-
-Open in your browser:
-
-```text
-http://localhost:8501
-```
-
-### Check All Containers
-
-To see both running and stopped containers:
-
-```bash
-docker ps -a
-```
-
-### View Application Logs
-
-To view the PrivacyHub logs:
-
-```bash
-docker logs privacy-app
-```
-
-To continuously watch the logs:
-
-```bash
-docker logs -f privacy-app
-```
-
-Press `Ctrl + C` to stop watching the logs.
-
-### Stop the Application
-
-```bash
-docker stop privacy-app
-```
-
-### Start it Again
-
-```bash
-docker start privacy-app
-```
-
-### Remove the Container
-
-```bash
-docker rm -f privacy-app
-```
-
-> If the container is removed, run the `docker run` command again to create a new one.
 
 ---
 
 ## Local Development
 
-For development without Docker, clone the repository and install the dependencies locally.
-
-### 1. Clone the Repository
-
 ```bash
+# 1. Clone
 git clone https://github.com/snehaja05d/privacy-preserving-annotation.git
 cd privacy-preserving-annotation
-```
 
-### 2. Create a Virtual Environment
-
-```bash
+# 2. Virtual environment
 python -m venv .venv
-```
 
-### 3. Activate the Environment
-
-**Windows (PowerShell):**
-
-```powershell
+# Windows (PowerShell)
 .\.venv\Scripts\Activate.ps1
-```
-
-**macOS / Linux:**
-
-```bash
+# macOS / Linux
 source .venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt        # core
+pip install -r requirements-full.txt  # complete set
+
+# 4. Run
+.\.venv\Scripts\python.exe .\privacyhub_web\run_web.py   # Windows
+# python privacyhub_web/run_web.py                        # macOS / Linux
 ```
 
-### 4. Install Dependencies
+Open `http://127.0.0.1:8501` — Swagger UI lives at `http://127.0.0.1:8501/docs`.
 
-```bash
-pip install -r requirements.txt
-```
-
-For the complete dependency set:
-
-```bash
-pip install -r requirements-full.txt
-```
+> The ML models (YOLO, PaddleOCR, BERT NER) load in the background at startup (~20–30 s). The first protection run also warms up OCR inference, so it's slower than subsequent runs.
 
 ---
 
-## Running PrivacyHub
+## Configuration
 
-Start the web application locally:
-
-```powershell
-.\.venv\Scripts\python.exe .\privacyhub_web\run_web.py
-```
-
-Once the server starts, open:
-
-```text
-http://127.0.0.1:8501
-```
-
-Interactive FastAPI documentation (Swagger UI) is available at:
-
-```text
-http://127.0.0.1:8501/docs
-```
-
-> **Note:** the ML models (YOLO, PaddleOCR, BERT NER) load in the background when the server starts, which takes ~20–30 seconds. The first protection run also warms up OCR inference, so it is slower than subsequent runs.
+| Variable | Default | Description |
+|---|---|---|
+| `WEB_HOST` | `127.0.0.1` | Host the server binds to (`0.0.0.0` in Docker) |
+| `WEB_PORT` | `8501` | Port the server listens on |
+| `OPEN_BROWSER` | `1` | `1` opens the dashboard in a browser on start, `0` disables it |
 
 ---
 
-## API Workflow
+## API Reference
 
-External applications communicate with PrivacyHub through the REST API using the following flow:
+External applications authenticate with a **Bearer token**, submit images, poll job status, and fetch results:
 
 ```mermaid
 sequenceDiagram
@@ -279,30 +181,28 @@ sequenceDiagram
     participant AP as Annotation Platform<br/>(Xtreme1 / CVAT / Label Studio)
     participant CA as Custom Annotator API<br/>(any HTTP tool)
 
-    App->>API: POST image (Bearer token)
-    API-->>App: 202 Accepted + Job ID
-    App->>API: GET job status
-    API-->>App: Status: PENDING / REVIEW / APPROVED_WAITING_FOR_DELIVERY / DELIVERED
+    App->>API: POST /api/v1/anonymize (Bearer token)
+    API-->>App: 202 Accepted + job_id
+    App->>API: GET /api/v1/jobs/{job_id}
+    API-->>App: PENDING / REVIEW / APPROVED_WAITING_FOR_DELIVERY / DELIVERED
 
-    alt Review Required
+    alt Review required
         API->>API: Manual review & approval
     end
 
-    App->>API: GET processed image
+    App->>API: GET /api/v1/jobs/{job_id}/result
     API-->>App: Approved privacy-safe image
 
-    opt Deliver to annotation platform
+    opt destination = ANNOTATION
         API->>AP: Send approved image
         AP-->>API: Delivery confirmation
     end
 
-    opt Destination = CUSTOM
+    opt destination = CUSTOM
         API->>CA: Single or chained HTTP request(s)
         CA-->>API: Delivery confirmation
     end
 ```
-
-> **Note:** All API requests require a valid PrivacyHub Bearer token.
 
 ### Endpoints
 
@@ -310,95 +210,135 @@ sequenceDiagram
 |---|---|---|
 | `POST` | `/api/v1/anonymize` | Submit an image for anonymization |
 | `GET` | `/api/v1/jobs/{job_id}` | Check job status |
-| `GET` | `/api/v1/jobs/{job_id}/result` | Download the protected image (when the destination is `RETURN`) |
+| `GET` | `/api/v1/jobs/{job_id}/result` | Download the protected image (`destination=RETURN`) |
 
-### `POST /api/v1/anonymize` parameters
-
-Sent as `multipart/form-data`:
+### `POST /api/v1/anonymize` parameters (multipart/form-data)
 
 | Field | Description |
 |---|---|
 | `file` | Image to process (required) |
 | `selected_types` | Comma-separated detection types. Default: `FACE,PLATE,EMAIL,PHONE,NAME,ID` |
-| `destination` | `RETURN` (default), `ANNOTATION`, or `CUSTOM`. `XTREME1` is still accepted for backward compatibility |
-| `annotation_platform` | `CVAT`, `XTREME1`, or `LABEL_STUDIO` (required when `destination=ANNOTATION`) |
+| `destination` | `RETURN` (default), `ANNOTATION`, or `CUSTOM`. `XTREME1` accepted for backward compatibility |
+| `annotation_platform` | `CVAT`, `XTREME1`, or `LABEL_STUDIO` (required for `ANNOTATION`) |
 | `platform_url` | Base URL of the annotation platform (required for `ANNOTATION`) |
 | `platform_token` | Access token for the annotation platform (required for `ANNOTATION`) |
 | `dataset_id` | Xtreme1 dataset ID (required for Xtreme1) |
 | `project_id` | Label Studio project ID (required for Label Studio); optional for CVAT |
-| `task_name` | Optional task name (used for CVAT tasks) |
+| `task_name` | Task name (used for CVAT tasks) |
 | `image_field` | Label Studio image data field. Default: `image` |
-| `custom_config` | JSON string describing the Custom Annotator API request (required when `destination=CUSTOM`) — see below |
-
-### Job statuses
-
-| Status | Meaning |
-|---|---|
-| `PENDING` | Job received, not ready yet |
-| `REVIEW` | Low-confidence detections, waiting for manual review and approval |
-| `APPROVED_WAITING_FOR_DELIVERY` | Approved, waiting to be delivered |
-| `DELIVERED` | Delivered (or ready to return) |
+| `custom_config` | JSON request description (required for `CUSTOM`) — see [Custom Annotator API](#custom-annotator-api) |
 
 ---
 
 ## Annotation Platform Delivery
 
-Approved, privacy-safe images can be delivered directly to an annotation platform through the Delivery & Integrations section of the dashboard, or through the API with `destination=ANNOTATION`.
+Available in the dashboard's Delivery & Integrations section or via the API (`destination=ANNOTATION`).
 
 | Platform | Required | Optional | Notes |
 |---|---|---|---|
-| **Xtreme1** | Platform URL, access (Bearer) token, Dataset ID | — | Image is uploaded to the given dataset |
-| **CVAT** | Platform URL, Personal Access Token | Project ID, task name | Creates a CVAT task, uploads the image, and verifies that media was attached. Works with CVAT Cloud and self-hosted CVAT. Requires `cvat-sdk` |
-| **Label Studio** | Platform URL, access token, Project ID | Image field name (default `image`) | Uploads the image into the project and waits for the import to finish |
+| **Xtreme1** | Platform URL, Bearer token, Dataset ID | — | Uploads into the given dataset |
+| **CVAT** | Platform URL, Personal Access Token | Project ID, task name | Creates a task, uploads the image, verifies media attachment. Cloud + self-hosted. Requires `cvat-sdk` |
+| **Label Studio** | Platform URL, access token, Project ID | Image field name (default `image`) | Uploads into the project, waits for import to finish |
 
-The dashboard can also list the CVAT projects visible to a Personal Access Token, so you can pick a project instead of typing its ID.
+The dashboard can list the CVAT projects visible to a Personal Access Token, so you can pick a project instead of typing its ID.
 
-> **Tip:** Label Studio (and any other tool with a simple upload endpoint) can equally be driven through the **Custom Annotator API** in single-request mode — no dedicated integration needed.
-
-Only the protected (masked) image is ever sent to the annotation environment — raw or unmasked images are never transmitted downstream.
+> Only the protected (masked) image is ever sent downstream — raw images never leave PrivacyHub.
 
 ---
 
 ## Custom Annotator API
 
-The Custom Annotator API is the universal delivery path for any annotator tool that PrivacyHub does not integrate with directly. It comes in two modes.
+The universal integration for any annotator tool without a built-in connector. Two modes:
 
 ### Single-request mode
 
-One configurable HTTP request carrying the image. Supports:
+One configurable HTTP request carrying the image.
 
 - **Methods:** `POST`, `PUT`, `PATCH`
-- **Authentication:** none, Bearer token, API key, custom header, or query parameter
-- **Request types:** Multipart (configurable image field name), JSON (image as base64 or data URI), Raw binary
+- **Auth:** none, Bearer token, API key, custom header, or query parameter
+- **Body:** Multipart (configurable image field), JSON (image as base64 / data URI), or Raw binary
 - **Extras:** query parameters, headers, body fields, and a success condition (e.g. `success == true`) evaluated against the JSON response
 
-Examples:
-
-| Tool | Configuration |
+| Tool | Working configuration |
 |---|---|
 | **Label Studio Cloud** | `POST https://app.humansignal.com/api/projects/{id}/import` · Bearer token · Multipart, field `file` |
-| **Roboflow** | `POST https://api.roboflow.com/dataset/{project}/upload` · `api_key` query parameter · Multipart, field `file` · success condition `success == true` |
+| **Roboflow** | `POST https://api.roboflow.com/dataset/{project}/upload` · `api_key` query param · Multipart, field `file` · success condition `success == true` |
 
 ### Chained-request mode
 
-For tools whose upload is a multi-step workflow, up to **8 ordered requests** can be chained:
+For tools with multi-step upload workflows — up to **8 ordered steps**:
 
-- Each step is a full request config: method (`GET`, `POST`, `PUT`, `PATCH`), URL, auth, query params, headers, multipart/JSON/raw body, and a success condition.
-- Steps can **capture values from JSON responses** into `{variables}` usable by later steps (e.g. a presigned URL returned by step 1 becomes the target of step 2).
-- Exactly one step carries the image; `{filename}` is available as a built-in variable everywhere.
-- All per-step secrets are redacted from error messages.
+- Every step is a full request: method (`GET`, `POST`, `PUT`, `PATCH`), URL, auth, query params, headers, multipart/JSON/raw body, and a success condition
+- Steps **capture values from JSON responses** into `{variables}` for later steps (e.g. a presigned URL from step 1 becomes step 2's target)
+- Exactly one step carries the image; `{filename}` is a built-in variable
+- Per-step secrets are redacted from error output
 
-Example — Xtreme1 dataset upload as a 3-step chain:
+**Example — Xtreme1 dataset upload as a 3-step chain:**
 
-1. `GET /api/data/generatePresignedUrl?fileName={filename}&datasetId=3` (Bearer) → captures `presigned_url` and `access_url` from the response
-2. `PUT {presigned_url}` — the image step (raw bytes, no auth)
-3. `POST /api/data/upload` (Bearer) — JSON body `{fileUrl: {access_url}, datasetId: 3, source: "LOCAL"}`
+1. `GET /api/data/generatePresignedUrl?fileName={filename}&datasetId=3` (Bearer) → captures `presigned_url`, `access_url`
+2. `PUT {presigned_url}` — the image step (raw bytes)
+3. `POST /api/data/upload` (Bearer) — JSON `{fileUrl: "{access_url}", datasetId: 3, source: "LOCAL"}`
+
+---
+
+## Evaluation
+
+Detection quality is measured with the scripts in `evaluation/` (developer tooling, not user-facing):
+
+- `evaluate_sroie.py`, `evaluate_icdar2015.py` — text-PII accuracy on standard OCR benchmarks
+- `evaluate_controlled.py` — accuracy on a controlled in-house set with ground-truth labels
+- `tests/` — regression tests for the text-PII pipeline
+
+Re-run these after changing models or thresholds to catch regressions.
 
 ---
 
 ## Performance Tips
 
-- **Select only the privacy types you need.** Unselected detection pipelines are skipped entirely — a faces/plates-only run avoids the OCR stage, which is the slowest part on CPU.
-- **Keep the server running.** Models load once at startup (~20–30 s); the first image also warms up OCR inference. Later images in the same server run are faster.
-- **On laptops, plug in and use "Best performance" power mode.** CPU throttling (especially on battery saver) can easily double inference time.
+- **Select only the privacy types you need.** Unselected pipelines are skipped entirely — a faces/plates-only run avoids the OCR stage, the slowest part on CPU.
+- **Keep the server running.** Models load once at startup; the first image warms up OCR inference. Later images are faster.
+- **On laptops, use "Best performance" power mode while plugged in.** CPU throttling (especially battery saver) can easily double inference time.
 - **Large images are downscaled for OCR** (longest side → 1600 px), but smaller inputs still process faster.
+
+---
+
+## Project Structure
+
+```text
+privacy-preserving-annotation/
+├── data/               # Data and project resources
+├── evaluation/         # Evaluation scripts and metrics (developer tooling)
+├── modules/            # Core processing modules
+├── privacy_engine/     # Detection and masking logic
+├── privacy_module/     # Runtime input/output/review storage
+├── privacyhub_web/     # FastAPI web application (backend + dashboard)
+├── scripts/            # Helper / utility scripts
+├── .dockerignore
+├── .gitignore
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt       # Core dependencies
+└── requirements-full.txt  # Full dependency set
+```
+
+---
+
+## Screenshots
+
+<!--
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="720" alt="PrivacyHub dashboard" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/review.png" width="720" alt="Human review screen" />
+</p>
+-->
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-change`)
+3. Commit your changes (`git commit -m "Add my change"`)
+4. Push and open a pull request
