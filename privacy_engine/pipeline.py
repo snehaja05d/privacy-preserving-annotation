@@ -115,31 +115,52 @@ class PrivacyEngine:
         # =====================================================
                # =====================================================
         # 4. VISUAL PRIVACY DETECTION
+        # Skipped entirely when neither FACE nor PLATE is selected,
+        # so a text-only run never pays for YOLO.
         # =====================================================
 
         import time
-        _t0 = time.time()
 
-        visual_result = self.visual_pipeline.process(
-            image_path,
-            output_path=None
-        )
+        visual_result = {"faces": [], "plates": []}
 
-        print(f"[TIMING] Visual pipeline (face/plate): {time.time() - _t0:.1f}s")
+        if {"FACE", "PLATE"} & selected_types:
+
+            _t0 = time.time()
+
+            visual_result = self.visual_pipeline.process(
+                image_path,
+                output_path=None
+            )
+
+            print(f"[TIMING] Visual pipeline (face/plate): {time.time() - _t0:.1f}s")
+
+        else:
+
+            print("[TIMING] Visual pipeline skipped (FACE/PLATE not selected)")
 
         # =====================================================
         # 5. TEXT PII DETECTION
+        # Skipped entirely when no text PII type is selected,
+        # so a faces-only run never pays for OCR + NER.
         # =====================================================
 
-        _t1 = time.time()
+        text_result = []
 
-        text_result = self.text_pipeline.process(
-            image_path,
-            output_path=None
-        )
+        if {"EMAIL", "PHONE", "NAME", "ID"} & selected_types:
 
-        print(f"[TIMING] Text pipeline (OCR/PII): {time.time() - _t1:.1f}s")
-        print(f"[TIMING] Number of text detections: {len(text_result)}")
+            _t1 = time.time()
+
+            text_result = self.text_pipeline.process(
+                image_path,
+                output_path=None
+            )
+
+            print(f"[TIMING] Text pipeline (OCR/PII): {time.time() - _t1:.1f}s")
+            print(f"[TIMING] Number of text detections: {len(text_result)}")
+
+        else:
+
+            print("[TIMING] Text pipeline skipped (no text PII type selected)")
 
         # =====================================================
         # 6. FILTER VISUAL DETECTIONS
