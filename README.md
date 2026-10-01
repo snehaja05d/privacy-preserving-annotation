@@ -6,7 +6,7 @@ The system automatically detects **faces, license plates, and text-based PII** �
 
 For cases where automatic detection needs verification, the platform supports **human-in-the-loop review**: images flagged as **Review Required** can be manually checked and approved before delivery.
 
-Approved images can be delivered to **Xtreme1, CVAT, or Label Studio**, and can also be sent to any HTTP endpoint through a **webhook**.
+Approved images can be delivered in three ways: **returned directly**, sent to a built-in **annotation platform** (Xtreme1, CVAT, Label Studio), or pushed to **any annotator tool** through the **Custom Annotator API** — a universal integration that handles single-request uploads as well as multi-step, chained request flows.
 
 ---
 
@@ -21,7 +21,8 @@ Approved images can be delivered to **Xtreme1, CVAT, or Label Studio**, and can 
 - [Running PrivacyHub](#running-privacyhub)
 - [API Workflow](#api-workflow)
 - [Annotation Platform Delivery](#annotation-platform-delivery)
-- [Webhooks](#webhooks)
+- [Custom Annotator API](#custom-annotator-api)
+- [Performance Tips](#performance-tips)
 
 ---
 
@@ -43,10 +44,8 @@ flowchart TD
     J -->|Manual review & approval| I
     I --> K["Delivery & Integration"]
     K --> L["Return Processed Image"]
-    K --> M["Xtreme1"]
-    K --> N["CVAT"]
-    K --> O["Label Studio"]
-    K --> P["Webhook (HTTP POST)"]
+    K --> M["Annotation Platform<br/>(Xtreme1 / CVAT / Label Studio)"]
+    K --> N["Custom Annotator API<br/>(any tool, single or chained requests)"]
 
     style A fill:#1f2937,stroke:#4b5563,color:#fff
     style B fill:#2563eb,stroke:#1d4ed8,color:#fff
@@ -59,15 +58,13 @@ flowchart TD
     style L fill:#374151,stroke:#4b5563,color:#fff
     style M fill:#374151,stroke:#4b5563,color:#fff
     style N fill:#374151,stroke:#4b5563,color:#fff
-    style O fill:#374151,stroke:#4b5563,color:#fff
-    style P fill:#374151,stroke:#4b5563,color:#fff
 ```
 
 PrivacyHub provides a **web interface built with FastAPI** and a **REST API** for external applications.
 
 External applications authenticate with a **Bearer token**, submit images for processing, receive a job ID, poll job status, and retrieve the processed image once it's ready. The API also handles **token management, usage tracking, rate limiting, and job tracking**.
 
-Once an image is approved as privacy-safe, it can be delivered directly to **Xtreme1, CVAT, or Label Studio**, or posted to your own endpoint through a **webhook**.
+Once an image is approved as privacy-safe, it can be **returned directly**, delivered to a built-in **annotation platform** (Xtreme1, CVAT, or Label Studio), or sent to **any annotator tool** through the **Custom Annotator API**.
 
 ---
 
@@ -76,10 +73,10 @@ Once an image is approved as privacy-safe, it can be delivered directly to **Xtr
 | Category | Capabilities |
 |---|---|
 | **Detection** | Face detection, license plate detection, OCR-based text detection, PII detection (names, emails, phone numbers, IDs) |
-| **Processing** | Confidence-based routing, automatic masking, human review for uncertain detections |
+| **Processing** | Confidence-based routing, automatic masking, human review for uncertain detections, per-type pipeline skipping for speed |
 | **API** | FastAPI REST API, Bearer-token authentication, token generation/expiry/revocation, usage tracking, rate limiting, asynchronous job tracking |
-| **Delivery** | Return processed image directly, or deliver to Xtreme1, CVAT, or Label Studio |
-| **Webhooks** | Send the approved, masked image to any HTTP/HTTPS endpoint as a `multipart/form-data` POST |
+| **Delivery** | Return the processed image directly, deliver to Xtreme1, CVAT, or Label Studio, or send to any tool via the Custom Annotator API |
+| **Custom Annotator API** | Single-request uploads (any HTTP endpoint) and chained multi-step flows with response capture and variable substitution |
 | **Interface** | Web-based PrivacyHub dashboard |
 
 ---
@@ -92,7 +89,7 @@ Once an image is approved as privacy-safe, it can be delivered directly to **Xtr
 - **ML/DL:** PyTorch, Hugging Face Transformers, ONNX Runtime
 - **Database:** SQLite
 - **Frontend:** HTML, CSS, JavaScript
-- **Integrations:** Xtreme1, CVAT (via `cvat-sdk`), Label Studio, Webhooks
+- **Integrations:** Xtreme1, CVAT (via `cvat-sdk`), Label Studio, Custom Annotator API (generic HTTP)
 - **Deployment:** Docker
 
 ---
@@ -103,7 +100,7 @@ Once an image is approved as privacy-safe, it can be delivered directly to **Xtr
 privacy-preserving-annotation/
 │
 ├── data/                  # Data and project resources
-├── evaluation/            # Evaluation scripts and metrics
+├── evaluation/            # Evaluation scripts and metrics (developer tooling, not user-facing)
 ├── modules/               # Core processing modules
 ├── privacy_engine/        # Detection and masking logic
 ├── privacy_module/        # Privacy-related utilities
@@ -267,6 +264,8 @@ Interactive FastAPI documentation (Swagger UI) is available at:
 http://127.0.0.1:8501/docs
 ```
 
+> **Note:** the ML models (YOLO, PaddleOCR, BERT NER) load in the background when the server starts, which takes ~20–30 seconds. The first protection run also warms up OCR inference, so it is slower than subsequent runs.
+
 ---
 
 ## API Workflow
@@ -278,7 +277,7 @@ sequenceDiagram
     participant App as External Application
     participant API as PrivacyHub API
     participant AP as Annotation Platform<br/>(Xtreme1 / CVAT / Label Studio)
-    participant WH as Webhook Endpoint
+    participant CA as Custom Annotator API<br/>(any HTTP tool)
 
     App->>API: POST image (Bearer token)
     API-->>App: 202 Accepted + Job ID
@@ -297,9 +296,9 @@ sequenceDiagram
         AP-->>API: Delivery confirmation
     end
 
-    opt Destination = WEBHOOK
-        API->>WH: POST masked image (multipart/form-data)
-        WH-->>API: 2xx response
+    opt Destination = CUSTOM
+        API->>CA: Single or chained HTTP request(s)
+        CA-->>API: Delivery confirmation
     end
 ```
 
@@ -321,8 +320,7 @@ Sent as `multipart/form-data`:
 |---|---|
 | `file` | Image to process (required) |
 | `selected_types` | Comma-separated detection types. Default: `FACE,PLATE,EMAIL,PHONE,NAME,ID` |
-| `destination` | `RETURN` (default), `ANNOTATION`, or `WEBHOOK`. `XTREME1` is still accepted for backward compatibility |
-| `webhook_url` | Required when `destination=WEBHOOK` |
+| `destination` | `RETURN` (default), `ANNOTATION`, or `CUSTOM`. `XTREME1` is still accepted for backward compatibility |
 | `annotation_platform` | `CVAT`, `XTREME1`, or `LABEL_STUDIO` (required when `destination=ANNOTATION`) |
 | `platform_url` | Base URL of the annotation platform (required for `ANNOTATION`) |
 | `platform_token` | Access token for the annotation platform (required for `ANNOTATION`) |
@@ -330,6 +328,7 @@ Sent as `multipart/form-data`:
 | `project_id` | Label Studio project ID (required for Label Studio); optional for CVAT |
 | `task_name` | Optional task name (used for CVAT tasks) |
 | `image_field` | Label Studio image data field. Default: `image` |
+| `custom_config` | JSON string describing the Custom Annotator API request (required when `destination=CUSTOM`) — see below |
 
 ### Job statuses
 
@@ -354,18 +353,52 @@ Approved, privacy-safe images can be delivered directly to an annotation platfor
 
 The dashboard can also list the CVAT projects visible to a Personal Access Token, so you can pick a project instead of typing its ID.
 
+> **Tip:** Label Studio (and any other tool with a simple upload endpoint) can equally be driven through the **Custom Annotator API** in single-request mode — no dedicated integration needed.
+
 Only the protected (masked) image is ever sent to the annotation environment — raw or unmasked images are never transmitted downstream.
 
 ---
 
-## Webhooks
+## Custom Annotator API
 
-A webhook is a delivery destination: once an image is approved, PrivacyHub sends the **masked image** to your own HTTP or HTTPS endpoint.
+The Custom Annotator API is the universal delivery path for any annotator tool that PrivacyHub does not integrate with directly. It comes in two modes.
 
-- Set `destination=WEBHOOK` and provide `webhook_url` (via the API or the dashboard).
-- PrivacyHub sends a `POST` request as `multipart/form-data` with:
-  - `file`: the protected image
-  - `filename`, `original_filename`, `source`, and `destination` (`WEBHOOK`)
-  - `job_id` (when the image came through the API)
-- Your endpoint must reply with a `2xx` status code; any other response is treated as a failed delivery.
-- The request times out after 60 seconds.
+### Single-request mode
+
+One configurable HTTP request carrying the image. Supports:
+
+- **Methods:** `POST`, `PUT`, `PATCH`
+- **Authentication:** none, Bearer token, API key, custom header, or query parameter
+- **Request types:** Multipart (configurable image field name), JSON (image as base64 or data URI), Raw binary
+- **Extras:** query parameters, headers, body fields, and a success condition (e.g. `success == true`) evaluated against the JSON response
+
+Examples:
+
+| Tool | Configuration |
+|---|---|
+| **Label Studio Cloud** | `POST https://app.humansignal.com/api/projects/{id}/import` · Bearer token · Multipart, field `file` |
+| **Roboflow** | `POST https://api.roboflow.com/dataset/{project}/upload` · `api_key` query parameter · Multipart, field `file` · success condition `success == true` |
+
+### Chained-request mode
+
+For tools whose upload is a multi-step workflow, up to **8 ordered requests** can be chained:
+
+- Each step is a full request config: method (`GET`, `POST`, `PUT`, `PATCH`), URL, auth, query params, headers, multipart/JSON/raw body, and a success condition.
+- Steps can **capture values from JSON responses** into `{variables}` usable by later steps (e.g. a presigned URL returned by step 1 becomes the target of step 2).
+- Exactly one step carries the image; `{filename}` is available as a built-in variable everywhere.
+- All per-step secrets are redacted from error messages.
+
+Example — Xtreme1 dataset upload as a 3-step chain:
+
+1. `GET /api/data/generatePresignedUrl?fileName={filename}&datasetId=3` (Bearer) → captures `presigned_url` and `access_url` from the response
+2. `PUT {presigned_url}` — the image step (raw bytes, no auth)
+3. `POST /api/data/upload` (Bearer) — JSON body `{fileUrl: {access_url}, datasetId: 3, source: "LOCAL"}`
+
+---
+
+## Performance Tips
+
+- **Select only the privacy types you need.** Unselected detection pipelines are skipped entirely — a faces/plates-only run avoids the OCR stage, which is the slowest part on CPU.
+- **Keep the server running.** Models load once at startup (~20–30 s); the first image also warms up OCR inference. Later images in the same server run are faster.
+- **On laptops, plug in and use "Best performance" power mode.** CPU throttling (especially on battery saver) can easily double inference time.
+- **Large images are downscaled for OCR** (longest side → 1600 px), but smaller inputs still process faster.
