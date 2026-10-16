@@ -320,8 +320,7 @@ privacy-preserving-annotation/
 ├── .gitignore
 ├── Dockerfile
 ├── docker-compose.yml
-├── requirements.txt       # Core dependencies
-└── requirements-full.txt  # Full dependency set
+└── requirements.txt    # All dependencies
 ```
 
 ---
