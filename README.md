@@ -146,8 +146,11 @@ python -m venv .venv
 source .venv/bin/activate
 
 # 3. Install dependencies
-pip install -r requirements.txt        # core
-pip install -r requirements-full.txt  # complete set
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm   # language model (not a pip package)
+
+# CPU-only machines: install torch from the CPU index first (skips the 2.5GB CUDA wheel)
+# pip install torch==2.13.0 torchvision==0.28.0 --index-url https://download.pytorch.org/whl/cpu
 
 # 4. Run
 .\.venv\Scripts\python.exe .\privacyhub_web\run_web.py   # Windows
